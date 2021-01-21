@@ -14,6 +14,12 @@ RUN \
         postgresql-contrib-11 \
         postgresql-plperl-11 \
     && \
+    apt-get -y --no-install-recommends install python3 python3-pip python3-setuptools && \
+    #
+    # Upgrade Pip
+    pip3 install -U pip && \
+    # https://github.com/pypa/pip/issues/5221#issuecomment-382069604
+    hash -r pip3 && \
     true
 
 # Make some run directories
@@ -31,6 +37,12 @@ COPY conf/ /etc/postgresql/11/main/
 RUN \
     touch /var/run/postgresql/postgresql-memory.conf && \
     chown postgres:postgres /var/run/postgresql/postgresql-memory.conf && \
+    true
+
+# Install package to manage schema migrations
+RUN \
+    pip3 install yandex-pgmigrate==1.0.6 && \
+    rm -rf /root/.cache/ && \
     true
 
 # Copy helper scripts, schema, migrations
