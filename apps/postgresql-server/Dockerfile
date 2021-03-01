@@ -6,7 +6,7 @@ FROM gcr.io/mcback/postgresql-base:latest
 
 # Install packages
 RUN \
-    apt-get update && \
+    apt-get -y update && \
     #
     # Install PostgreSQL
     apt-get -y --no-install-recommends install \
