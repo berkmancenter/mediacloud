@@ -6,6 +6,7 @@ FROM gcr.io/mcback/postgresql-base:latest
 
 # Install packages
 RUN \
+    apt-get -y update && \
     #
     # Install PostgreSQL
     apt-get -y --no-install-recommends install \
@@ -14,6 +15,25 @@ RUN \
         postgresql-contrib-11 \
         postgresql-plperl-11 \
     && \
+    apt-get -y --no-install-recommends install python3 python3-pip python3-setuptools && \
+    #
+    # Upgrade Pip
+    pip3 install -U pip && \
+    #
+    # https://github.com/pypa/pip/issues/5221#issuecomment-382069604
+    hash -r pip3 && \
+    apt-get -y --no-install-recommends install build-essential python3-dev libffi-dev libpq-dev && \
+    #
+    # Install package to manage schema migrations
+    pip3 install yandex-pgmigrate==1.0.6 && \
+    #
+    # Remove temporary dependencies
+    apt-get -y remove build-essential python3-dev libffi-dev libpq-dev && \
+    #
+    # Cleanup
+    apt-get -y autoremove && \
+    rm -rf /root/.cache/ && \
+    #
     true
 
 # Make some run directories
@@ -33,18 +53,20 @@ RUN \
     chown postgres:postgres /var/run/postgresql/postgresql-memory.conf && \
     true
 
-# Copy helper scripts, schema, migrations
+# Copy helper scripts, schema, migrations, pgmigrate callbacks/config
 RUN mkdir -p /opt/mediacloud/
 COPY bin/ /opt/mediacloud/bin/
-COPY schema/ /opt/mediacloud/schema/
+COPY pgmigrate-callbacks/ /opt/mediacloud/pgmigrate-callbacks/
+COPY migrations/ /opt/mediacloud/migrations/
+COPY migrations.yml /opt/mediacloud/migrations.yml
+RUN cd /opt/mediacloud
 
 USER postgres
 
-# Initialize data volume, create users, a database, and initialize it with
-# schema
+# Initialize data volume, create users + database
 # If a new empty volume gets mounted to /var/lib/postgresql/ upon
 # container start, Docker will copy the files from the container to the volume
-RUN /opt/mediacloud/bin/initialize_schema.sh
+RUN /opt/mediacloud/bin/initialize_db.sh
 
 ENV \
     PATH="/opt/mediacloud/bin:${PATH}" \
@@ -56,10 +78,10 @@ ENV \
     PGPASSWORD=mediacloud \
     PGDATABASE=mediacloud
 
-# Remove the init script so that someone doesn't accidentally run it in
-# production
+# Remove the init script so that someone doesn't accidentally run it in production
 USER root
-RUN rm /opt/mediacloud/bin/initialize_schema.sh
+RUN rm /opt/mediacloud/bin/initialize_db.sh
+
 USER postgres
 
 # PostgreSQL data
