@@ -13,6 +13,9 @@ MIGRATIONS_DIR="/opt/mediacloud/migrations"
 # up connecting in the middle of migrating
 TEMP_PORT=12345
 
+# In case the database is in recovery, wait for up to 1 hour for it to complete
+PGCTL_START_TIMEOUT=3600
+
 if [ ! -d "${MIGRATIONS_DIR}" ]; then
     echo "Migrations directory ${MIGRATIONS_DIR} does not exist."
     exit 1
@@ -22,7 +25,7 @@ fi
 "${MC_POSTGRESQL_BIN_DIR}/pg_ctl" \
     -o "-c config_file=${MC_POSTGRESQL_CONF_PATH} -p ${TEMP_PORT}" \
     -D "${MC_POSTGRESQL_DATA_DIR}" \
-    -t 1200 \
+    -t "${PGCTL_START_TIMEOUT}" \
     -w \
     start
 
@@ -34,5 +37,4 @@ cd /opt/mediacloud && pgmigrate -t latest migrate
     -D "${MC_POSTGRESQL_DATA_DIR}" \
     -m fast \
     -w \
-    -t 1200 \
     stop
